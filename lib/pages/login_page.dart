@@ -25,7 +25,17 @@ class LoginPage extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          MyTextfield(),
+          MyTextfield(
+            hintText: "Email",
+            obscureText: false,
+          ),
+          
+          const SizedBox(height: 10),
+          
+          MyTextfield(
+            hintText: "Password",
+            obscureText: true,
+          ),
 
         ],
       )
