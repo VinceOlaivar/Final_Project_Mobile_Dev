@@ -2,21 +2,18 @@ import 'package:final_project/components/my_button.dart';
 import 'package:final_project/components/my_textfield.dart';
 import 'package:flutter/material.dart';
 
-class LoginPage extends StatelessWidget {
+class RegisterPage  extends StatelessWidget {
 
   final TextEditingController emailController = TextEditingController();
   final TextEditingController pwController = TextEditingController();
+  final TextEditingController confirmPwController = TextEditingController();
 
-  
-  void Function()? onTap;
+  final void Function()? onTap;
 
-  LoginPage({super.key, required this.onTap});
+  RegisterPage ({super.key, required this.onTap});
 
-
-//login method
-  void login(){}
-
-
+  //register method
+  void register(){} 
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +27,7 @@ class LoginPage extends StatelessWidget {
               color: Theme.of(context).colorScheme.primary),
           const SizedBox(height: 20),
           Text(
-            'Welcome to the Login Page',
+            'Lets get you registered',
             style: TextStyle(
               color: Theme.of(context).colorScheme.primary,
               fontSize: 16,
@@ -50,14 +47,22 @@ class LoginPage extends StatelessWidget {
           MyTextfield(
             hintText: "Password",
             obscureText: true,
+            controller: confirmPwController,
+          ),
+         
+          const SizedBox(height: 10),
+          
+          MyTextfield(
+            hintText: "Confirm Password",
+            obscureText: true,
             controller: pwController,
           ),
-
+          
           const SizedBox(height: 20),
 
           MyButton(
-            text: "Login",
-            onTap: login,
+            text: "Register",
+            onTap: register,
           ),
 
           const SizedBox(height: 20),
@@ -65,15 +70,14 @@ class LoginPage extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text("Not a Member? ",
+              Text("Already a Member? ",
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.primary,
                 ),
               ),
               GestureDetector(
                 onTap: onTap,
-
-                child: Text(" Register Now", 
+                child: Text(" Login Now", 
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.bold,
