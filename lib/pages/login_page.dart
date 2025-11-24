@@ -1,3 +1,4 @@
+import 'package:final_project/auth/auth_service.dart';
 import 'package:final_project/components/my_button.dart';
 import 'package:final_project/components/my_textfield.dart';
 import 'package:flutter/material.dart';
@@ -14,7 +15,23 @@ class LoginPage extends StatelessWidget {
 
 
 //login method
-  void login(){}
+  void login(BuildContext context ) async {
+
+    final authService = AuthService();
+
+    try {
+      await authService.signInWithEmailAndPassword( emailController.text, pwController.text);
+
+    }
+    catch (e) {
+      showDialog(context: context, builder: (context) => AlertDialog(
+        title: Text("Error"),
+        content: Text(e.toString()),
+      ),
+      );
+    }
+
+  }
 
 
 
@@ -57,7 +74,7 @@ class LoginPage extends StatelessWidget {
 
           MyButton(
             text: "Login",
-            onTap: login,
+            onTap: () => login(context),
           ),
 
           const SizedBox(height: 20),
