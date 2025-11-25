@@ -85,4 +85,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'chatapp-17e42.firebasestorage.app',
     measurementId: 'G-FW67RVKMGM',
   );
+
 }
