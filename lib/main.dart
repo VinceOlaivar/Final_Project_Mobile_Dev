@@ -1,4 +1,4 @@
-import 'package:final_project/auth/auth_gate.dart';
+import 'package:final_project/services/auth/auth_gate.dart';
 import 'package:final_project/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';

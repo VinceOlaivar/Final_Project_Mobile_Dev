@@ -1,8 +1,9 @@
-import 'package:final_project/auth/auth_service.dart';
+import 'package:final_project/services/auth/auth_service.dart';
 import 'package:final_project/components/my_button.dart';
 import 'package:final_project/components/my_textfield.dart';
 import 'package:flutter/material.dart';
 
+// ignore: must_be_immutable
 class LoginPage extends StatelessWidget {
 
   final TextEditingController emailController = TextEditingController();
