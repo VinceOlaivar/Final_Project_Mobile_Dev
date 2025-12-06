@@ -29,10 +29,21 @@ Future<void> sendMessage(String recieverID, message)async{
   final String currentUserEmail = _auth.currentUser!.email!;
   final Timestamp timestamp = Timestamp.now();
 
+  // Get user name from Users collection
+  final userDoc = await _firestore.collection('Users').doc(currentUserID).get();
+  String userName = 'Unknown';
+  if (userDoc.exists) {
+    final userData = userDoc.data();
+    if (userData != null && userData['name'] != null) {
+      userName = userData['name'];
+    }
+  }
+
   //create a new message
   Message newMessage = Message(
     senderID: currentUserID,
     senderEmail: currentUserEmail,
+    senderName: userName,
     receiverID: recieverID,
     message: message,
     timestamp: timestamp,

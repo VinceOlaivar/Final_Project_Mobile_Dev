@@ -15,6 +15,7 @@ class HubTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Determine hub properties
     final bool isClass = hubData["groupType"] == 'Classes';
     final IconData icon = isClass ? Icons.menu_book_rounded : Icons.groups_2_rounded;
     // Define distinct primary and light colors for Class (Blue) and Organization (Green)
@@ -22,6 +23,15 @@ class HubTile extends StatelessWidget {
     final String type = isClass ? 'Class' : 'Organization';
     final bool isModerator = authService.getCurrentUser()?.uid == hubData["creatorId"];
     final colorScheme = Theme.of(context).colorScheme;
+
+    // --- FIXES: Robustly get data to handle name/email discrepancies ---
+    // 1. Robustly get the Hub Name (checking for 'name' OR 'groupName')
+    final String hubName = hubData["name"] ?? hubData["groupName"] ?? "Untitled Hub"; 
+    // 2. Robustly get the Creator (checking for 'creatorName' OR 'creatorEmail')
+    final String creator = hubData["creatorName"] ?? hubData["creatorEmail"] ?? 'No Creator Info';
+    // 3. Get the ID (which is set to 'id' in home_page.dart)
+    final String hubId = hubData["id"] ?? "No-ID";
+    // -------------------------------------------------------------------
 
     return Container(
       decoration: BoxDecoration(
@@ -40,14 +50,14 @@ class HubTile extends StatelessWidget {
         color: Colors.transparent, // Allows InkWell/Ripple effect
         child: InkWell(
           onTap: () {
-            // Navigate to the Hub Page (MOCKED navigation)
+            // Navigate to the Hub Page
             if (kDebugMode) {
-              print("Navigating to Hub: ${hubData["name"]}");
+              print("Navigating to Hub: $hubName (ID: $hubId)");
             }
             Navigator.push(context, MaterialPageRoute(
               builder: (context) => HubPage( 
-                recieverEmail: hubData["name"],
-                recieverID: hubData["groupId"],
+                recieverEmail: hubName, // Hub name
+                recieverID: hubId,      // Hub ID (Firestore document ID)
                 isGroupChat: true,
                 groupType: type,
                 isModerator: isModerator, 
@@ -76,7 +86,7 @@ class HubTile extends StatelessWidget {
                       child: Center(
                         child: Icon(
                           icon,
-                          size: 56, // Slightly reduced icon size for smaller tile
+                          size: 56, 
                           color: Colors.white.withOpacity(0.95),
                         ),
                       ),
@@ -87,7 +97,7 @@ class HubTile extends StatelessWidget {
                       top: 8,
                       right: 8,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3), // Smaller padding
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3), 
                         decoration: BoxDecoration(
                           color: primaryColor.withOpacity(0.8),
                           borderRadius: BorderRadius.circular(10),
@@ -97,7 +107,7 @@ class HubTile extends StatelessWidget {
                           type,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 9, // Smaller font size
+                            fontSize: 9, 
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -111,15 +121,15 @@ class HubTile extends StatelessWidget {
               Expanded(
                 flex: 2,
                 child: Padding(
-                  padding: const EdgeInsets.all(10.0), // Reduced padding
+                  padding: const EdgeInsets.all(10.0), 
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        hubData["name"] ?? "Untitled Hub",
+                        hubName, // Use the resolved name
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
-                          fontSize: 15, // Reduced font size
+                          fontSize: 15, 
                           color: colorScheme.onSurface,
                         ),
                         maxLines: 2,
@@ -128,13 +138,13 @@ class HubTile extends StatelessWidget {
                       const SizedBox(height: 2),
                       Row(
                         children: [
-                          Icon(Icons.person_pin, size: 12, color: colorScheme.tertiary), // Smaller icon
+                          Icon(Icons.person_pin, size: 12, color: colorScheme.tertiary), 
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              hubData["creatorName"] ?? 'No Creator',
+                              creator, // Use the resolved creator name/email
                               style: TextStyle(
-                                fontSize: 11, // Reduced font size
+                                fontSize: 11, 
                                 color: colorScheme.tertiary,
                               ),
                               overflow: TextOverflow.ellipsis,
@@ -147,12 +157,12 @@ class HubTile extends StatelessWidget {
                       if (isModerator)
                         Row(
                           children: [
-                            const Icon(Icons.star_rate_rounded, color: Colors.amber, size: 14), // Smaller icon
+                            const Icon(Icons.star_rate_rounded, color: Colors.amber, size: 14), 
                             const SizedBox(width: 4),
                             Text(
                               'Moderator',
                               style: TextStyle(
-                                fontSize: 11, // Reduced font size
+                                fontSize: 11, 
                                 fontWeight: FontWeight.bold,
                                 color: primaryColor,
                               ),

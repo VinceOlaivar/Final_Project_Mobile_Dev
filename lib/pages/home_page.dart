@@ -1,10 +1,12 @@
-import "package:final_project/components/hub_tile.dart"; 
-import "package:final_project/services/auth/auth_service.dart";
-import "package:final_project/components/my_drawer.dart";
-import "package:flutter/material.dart";
-import 'package:cloud_firestore/cloud_firestore.dart'; // Keep for Timestamp if needed, but primarily for type
-import 'package:flutter/foundation.dart';
-import 'package:final_project/services/group/group_service.dart'; 
+import 'package:final_project/services/auth/auth_service.dart';
+import 'package:final_project/components/my_drawer.dart';
+import 'package:flutter/material.dart';
+import 'package:final_project/services/group/group_service.dart';
+import 'package:final_project/components/hub_tile.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:final_project/components/my_textfield.dart';
+import 'package:final_project/components/my_button.dart';
+
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,396 +16,311 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  
-  final AuthService authService = AuthService();
-  final GroupService groupService = GroupService(); 
-  
-  // MOCK: Role state is still mocked, but we keep the logic structure.
-  String _userRole = 'General'; 
+  // Services
+  final AuthService _authService = AuthService();
+  final GroupService _groupService = GroupService(); 
+
+  // Controllers for the Hub creation dialog
+  final TextEditingController _hubNameController = TextEditingController();
+  final TextEditingController _joinHubNameController = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    _fetchUserRole(); 
-    // Removed _hubsFuture initialization as we are using a Stream now
+  void dispose() {
+    _hubNameController.dispose();
+    _joinHubNameController.dispose();
+    super.dispose();
   }
-  
-  // MOCK: Function to refresh the hub list is no longer needed with StreamBuilder
-  // void _refreshHubs() { ... } 
 
-
-  // Fetch the current user's role from Firestore in real-time (MOCKED for UI focus)
-  void _fetchUserRole() async {
-    final userId = authService.getCurrentUser()?.uid;
-    if (userId != null) {
-      try {
-        // --- START MOCKING ROLE FETCH (Replace with actual Firestore fetch later) ---
-        await Future.delayed(const Duration(milliseconds: 100));
-        setState(() {
-            _userRole = (userId.hashCode % 2 == 0) ? 'Teacher' : 'Student Org';
-        });
-        // --- END MOCKING ROLE FETCH ---
-
-      } catch (e) {
-        if (kDebugMode) {
-          print("Error fetching user role: $e");
-        }
-      }
-    }
+  void logout() {
+    _authService.signOut();
   }
-  
-  // MOCK: Removed _fetchMockHubs() 
 
+  // Implementation: Function to show a dialog for creating a new hub
+  void _showCreateHubDialog() {
+    // Reset state for new dialog instance
+    _hubNameController.clear();
 
-  // Universal function to create a new group (Class or Org) 
-  void _createNewGroup(BuildContext context, String groupType) {
-    String requiredRole = groupType == 'Class' ? 'Teacher' : 'Student Org';
-    
     showDialog(
       context: context,
       builder: (context) {
-        final TextEditingController nameController = TextEditingController();
-        bool isLoading = false; // State for loading indicator inside dialog
-
-        return StatefulBuilder( // Use StatefulBuilder to manage loading state inside the dialog
-          builder: (context, setStateInDialog) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: Text("Create New $groupType Hub", style: const TextStyle(fontWeight: FontWeight.bold)),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _userRole == requiredRole 
-                    ? "Your current role is $_userRole."
-                    : _userRole == 'General'
-                      ? "Creating a $groupType will upgrade your role to '$requiredRole'."
-                      : "Only a $requiredRole can create a $groupType. You are currently $_userRole.",
-                    style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.primary),
+        return AlertDialog(
+          title: const Text("Create New Hub"),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Hub Name Input
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 0),
+                  child: MyTextfield(
+                    controller: _hubNameController,
+                    hintText: "Enter Hub Name (e.g., CS 101)",
+                    obscureText: false,
+                    focusNode: null,
                   ),
-                  const SizedBox(height: 15),
-                  TextField(
-                    controller: nameController,
-                    decoration: InputDecoration(
-                      hintText: "Enter $groupType Name",
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))
-                    ),
-                    enabled: (_userRole == 'General' || _userRole == requiredRole) && !isLoading,
-                  ),
-                  if (isLoading) const Padding(
-                    padding: EdgeInsets.only(top: 15.0),
-                    child: LinearProgressIndicator(),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isLoading ? null : () => Navigator.pop(context),
-                  child: const Text("Cancel"),
                 ),
-                if (_userRole == 'General' || _userRole == requiredRole)
-                  TextButton(
-                    onPressed: isLoading ? null : () async {
-                      if (nameController.text.isNotEmpty) {
-                        setStateInDialog(() { isLoading = true; }); // Start loading
-                        
-                        try {
-                          await groupService.createNewHub(
-                            name: nameController.text.trim(),
-                            type: groupType,
-                          );
-                          
-                          if (context.mounted) {
-                            Navigator.pop(context); // Close dialog
-                            // NO NEED TO CALL _refreshHubs()! The StreamBuilder handles the refresh.
-                            
-                            // Show success message
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("Hub '${nameController.text.trim()}' created successfully!"),
-                                duration: const Duration(seconds: 3),
-                              ),
-                            );
-                          }
-                          
-                        } catch (e) {
-                          if (kDebugMode) {
-                            print("Hub creation failed: $e");
-                          }
-                          if (context.mounted) {
-                            setStateInDialog(() { isLoading = false; }); // Stop loading
-                            Navigator.pop(context); // Close dialog
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("Error creating hub: ${e.toString()}"),
-                                backgroundColor: Colors.red,
-                                duration: const Duration(seconds: 5),
-                              ),
-                            );
-                          }
-                        }
-                      }
-                    },
-                    child: Text(
-                      isLoading ? "Creating..." : "Create Hub", 
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold, 
-                        color: Theme.of(context).colorScheme.primary
-                      )
-                    ),
-                  ),
               ],
-            );
-          }
+            ),
+          ),
+          actions: [
+            // Cancel Button
+            TextButton(
+              onPressed: () {
+                _hubNameController.clear();
+                Navigator.of(context).pop();
+              },
+              child: Text("Cancel", style: TextStyle(color: Theme.of(context).colorScheme.tertiary)),
+            ),
+
+            // Create Button
+            MyButton(
+              text: "Create",
+              onTap: () {
+                _createHub(_hubNameController.text);
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
         );
       },
     );
   }
 
-  // Helper function to determine the number of columns based on screen width
-  int _getCrossAxisCount(BuildContext context) {
-    double width = MediaQuery.of(context).size.width;
-    if (width < 600) {
-      // Small screens (Mobile)
-      return 3;
-    } else {
-      // Larger screens (Tablet/Desktop)
-      return 5;
+  // Implementation: Function to show a dialog for joining an existing hub
+  void _showJoinHubDialog() {
+    // Reset state for new dialog instance
+    _joinHubNameController.clear();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Join Hub"),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Hub ID Input
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 0),
+                  child: MyTextfield(
+                    controller: _joinHubNameController,
+                    hintText: "Enter Hub ID to Join (e.g., ABC123)",
+                    obscureText: false,
+                    focusNode: null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            // Cancel Button
+            TextButton(
+              onPressed: () {
+                _joinHubNameController.clear();
+                Navigator.of(context).pop();
+              },
+              child: Text("Cancel", style: TextStyle(color: Theme.of(context).colorScheme.tertiary)),
+            ),
+
+            // Join Button
+            MyButton(
+              text: "Join",
+              onTap: () {
+                _joinHub(_joinHubNameController.text);
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Function to call the GroupService to create the hub
+  void _createHub(String name) async {
+    if (name.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Hub name cannot be empty.")),
+      );
+      return;
     }
+
+    try {
+      String hubId = await _groupService.createNewHub(
+        name: name.trim(),
+      );
+
+      _hubNameController.clear();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("${name.trim()} Hub created successfully!\nHub ID: $hubId")),
+      );
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to create hub: ${e.toString()}")),
+      );
+    }
+  }
+
+  // Function to call the GroupService to join the hub
+  void _joinHub(String hubId) async {
+    if (hubId.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Hub ID cannot be empty.")),
+      );
+      return;
+    }
+
+    try {
+      await _groupService.joinHubById(hubId.trim().toUpperCase());
+
+      _joinHubNameController.clear();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Successfully joined hub ${hubId.trim().toUpperCase()}!")),
+      );
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to join hub: ${e.toString()}")),
+      );
+    }
+  }
+
+
+  Widget _buildBodyContent() {
+    return _buildHubsList(); 
+  }
+
+  // List of all the user's private hubs/groups
+    Widget _buildHubsList() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _groupService.getHubsStream(),
+      builder: (context, snapshot) {
+        // Handle error
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              "Error loading hubs: ${snapshot.error}",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          );
+        }
+
+        // Handle no data / loading
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final List<DocumentSnapshot> hubDocs = snapshot.data!.docs;
+
+        // No hubs found
+        if (hubDocs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.hub,
+                    size: 60,
+                    color:
+                        Theme.of(context).colorScheme.primary.withOpacity(0.5)),
+                const SizedBox(height: 10),
+                Text(
+                  "You are not in any Hubs. Tap '+' to create one.",
+                  style: TextStyle(color: Theme.of(context).colorScheme.primary),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Return the list of Hubs
+        return GridView.builder(
+          padding: const EdgeInsets.all(12),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.9,
+          ),
+          itemCount: hubDocs.length,
+          itemBuilder: (context, index) {
+            final DocumentSnapshot doc = hubDocs[index];
+
+            // Safely get data and make a copy so we don't mutate Firestore internals
+            final raw = doc.data();
+            final Map<String, dynamic> hubData =
+                (raw is Map<String, dynamic>) ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+
+            // Inject the Firestore document ID for navigation/identification
+            hubData['id'] = doc.id;
+
+            return HubTile(
+              hubData: hubData,
+              authService: _authService,
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final currentUser = authService.getCurrentUser();
-    final displayName = currentUser?.email?.split('@').first ?? 'User';
 
-    // Floating Action Button
-    final fab = FloatingActionButton.extended(
-      onPressed: () => _showGroupCreationOptions(context),
-      label: const Text("Create Hub"),
-      icon: const Icon(Icons.add_circle_outline),
-      backgroundColor: colorScheme.primary,
-      foregroundColor: colorScheme.onPrimary,
-      tooltip: 'Create a new Class or Organization Hub',
-    );
-    
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Welcome Back, $displayName", 
-              style: TextStyle(
-                fontSize: 14, 
-                color: colorScheme.tertiary,
-                fontWeight: FontWeight.w500
-              )
-            ),
-            const Text(
-              "My School Hubs", 
-              style: TextStyle(
-                fontSize: 24, 
-                fontWeight: FontWeight.w900
-              )
-            ),
-          ],
-        ),
-        toolbarHeight: 80, 
+        title: const Text("My Hubs"),
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.onSurface,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search, size: 28),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("MOCK: Search feature coming soon!"))
-              );
-            },
-            tooltip: 'Search Hubs',
-          ),
-          const SizedBox(width: 8),
-        ],
       ),
       drawer: const MyDrawer(),
-      body: _buildJoinedHubsGrid(), 
-      floatingActionButton: fab, 
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-    );
-  }
-  
-  // Dialog to choose which type of group to create
-  void _showGroupCreationOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(25),
-              topRight: Radius.circular(25),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.tertiary.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-                margin: const EdgeInsets.only(bottom: 15),
-              ),
-              Text(
-                'Create New Hub',
-                style: TextStyle(
-                  fontSize: 24, 
-                  fontWeight: FontWeight.w800, 
-                  color: Theme.of(context).colorScheme.onSurface
-                )
-              ),
-              const SizedBox(height: 5),
-              Text(
-                'Your Role: $_userRole',
-                style: TextStyle(
-                  fontSize: 14, 
-                  color: Theme.of(context).colorScheme.tertiary
-                )
-              ),
-              const Divider(height: 30),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.blueAccent.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12)
-                  ),
-                  child: const Icon(Icons.class_, color: Colors.blueAccent),
-                ),
-                title: const Text('New Class Hub', style: TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: const Text('For academic subjects and courses'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  Navigator.pop(context); // Close bottom sheet
-                  _createNewGroup(context, 'Class');
-                },
-              ),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12)
-                  ),
-                  child: const Icon(Icons.people, color: Colors.green),
-                ),
-                title: const Text('New Organization Hub', style: TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: const Text('For clubs, teams, and student groups'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  Navigator.pop(context); // Close bottom sheet
-                  _createNewGroup(context, 'Organization');
-                },
-              ),
-              const SizedBox(height: 10),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  // Widget to consolidate and display both Classes and Organizations in a single Grid
-  Widget _buildJoinedHubsGrid() {
-    // Use StreamBuilder to listen for real-time updates from the database
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: groupService.getHubsStream(), 
       
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          // Display a user-friendly error message
-          if (kDebugMode) {
-            print("Firestore Stream Error: ${snapshot.error}");
+      body: _buildBodyContent(),
+
+      // Floating Action Button with menu for create/join
+      floatingActionButton: PopupMenuButton<String>(
+        onSelected: (value) {
+          if (value == 'create') {
+            _showCreateHubDialog();
+          } else if (value == 'join') {
+            _showJoinHubDialog();
           }
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(25.0),
-              child: Text(
-                "Error loading hubs. Check your Firestore rules or network connection.",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.red[700]),
-              ),
+        },
+        itemBuilder: (context) => [
+          const PopupMenuItem<String>(
+            value: 'create',
+            child: Row(
+              children: [
+                Icon(Icons.add),
+                SizedBox(width: 8),
+                Text('Create Hub'),
+              ],
             ),
-          );
-        }
-
-        // Show a loading indicator while the data is fetching
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final List<Map<String, dynamic>> allHubs = snapshot.data ?? [];
-
-        if (allHubs.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(25.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.widgets_outlined, size: 60, color: Theme.of(context).colorScheme.tertiary.withOpacity(0.5)),
-                  const SizedBox(height: 15),
-                  Text(
-                    "You haven't joined any School Hubs yet.",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "Tap 'Create Hub' below to get started or 'Join Hub' from the menu.",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Theme.of(context).colorScheme.tertiary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        // Display Grid View
-        return Padding(
-          padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 80), 
-          child: GridView.builder(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: _getCrossAxisCount(context), 
-              crossAxisSpacing: 12.0, 
-              mainAxisSpacing: 12.0, 
-              childAspectRatio: 1.0, 
-            ),
-            itemCount: allHubs.length,
-            itemBuilder: (context, index) {
-              final hubData = allHubs[index];
-              return HubTile(
-                hubData: hubData, 
-                authService: authService,
-              );
-            },
           ),
-        );
-      },
+          const PopupMenuItem<String>(
+            value: 'join',
+            child: Row(
+              children: [
+                Icon(Icons.group_add),
+                SizedBox(width: 8),
+                Text('Join Hub'),
+              ],
+            ),
+          ),
+        ],
+        child: FloatingActionButton(
+          onPressed: null, // Handled by PopupMenuButton
+          backgroundColor: colorScheme.primary,
+          child: Icon(Icons.more_vert, color: colorScheme.onPrimary),
+        ),
+      ),
     );
   }
 }

@@ -6,11 +6,13 @@ class ChatBubble extends StatelessWidget {
 
   final String message;
   final bool isCurrentUser;
+  final String? senderName;
 
 
   const ChatBubble({super.key,
     required this.message,
     required this.isCurrentUser,
+    this.senderName,
   });
 
   @override
@@ -19,30 +21,63 @@ class ChatBubble extends StatelessWidget {
     //light vs dark mode for correct bubble color
     bool isDarkMode = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
 
-
     return Container(
-
-      decoration: BoxDecoration(
-        color: isCurrentUser 
-        ? (isDarkMode ? Colors.green.shade600: Colors.grey.shade500)
-        : (isDarkMode ? const Color.fromARGB(255, 75, 150, 77): Colors.grey.shade200),
-        borderRadius: BorderRadius.circular(12),
-
+      margin: EdgeInsets.only(
+        top: 5,
+        bottom: 5,
+        left: isCurrentUser ? 50 : 10,
+        right: isCurrentUser ? 10 : 50,
       ),
-      padding: const EdgeInsets.all(10),
-      margin: EdgeInsets.symmetric(
-        vertical: 5,
-        horizontal: 25,
+      child: Align(
+        alignment: isCurrentUser ? Alignment.centerRight : Alignment.centerLeft,
+        child: Column(
+          crossAxisAlignment: isCurrentUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            if (!isCurrentUser && senderName != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  senderName!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                ),
+              ),
+            Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.7, // Max 70% of screen width
+                minWidth: 50, // Minimum width
+              ),
+              decoration: BoxDecoration(
+                color: isCurrentUser
+                ? (isDarkMode ? Colors.blue.shade600 : Colors.blue.shade500)
+                : (isDarkMode ? Colors.grey.shade700 : Colors.grey.shade500),
+                border: !isCurrentUser && !isDarkMode
+                  ? Border.all(color: Colors.grey.shade600, width: 1)
+                  : null,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(12),
+                  topRight: const Radius.circular(12),
+                  bottomLeft: isCurrentUser ? const Radius.circular(12) : const Radius.circular(4),
+                  bottomRight: isCurrentUser ? const Radius.circular(4) : const Radius.circular(12),
+                ),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Text(
+                message,
+                style: TextStyle(
+                  color: isCurrentUser
+                  ? Colors.white
+                  : (isDarkMode ? const Color.fromARGB(255, 154, 152, 180) : Colors.black),
+                ),
+                softWrap: true,
+              ),
+            ),
+          ],
+        ),
       ),
-      child: Text(message,
-        style: TextStyle(
-          color: isCurrentUser 
-          ? Colors.white 
-          :(isDarkMode ? Colors.white : Colors.black),
-        )
-      ),
-     
-
     );
   }
 }
