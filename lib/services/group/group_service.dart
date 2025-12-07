@@ -14,6 +14,7 @@ class GroupService {
   // 1. Create a new Hub
   Future<String> createNewHub({
     required String name,
+    required String groupType,
   }) async {
     final user = getCurrentUser();
     if (user == null) {
@@ -33,11 +34,11 @@ class GroupService {
     // Generate a unique 6-character hub ID
     String hubId = _generateHubId();
 
-    // Create the new Hub document (default to 'Classes' for simplicity)
+    // Create the new Hub document
     final newHub = {
       'id': hubId,
       'name': name,
-      'groupType': 'Classes', // Default to 'Classes'
+      'groupType': groupType,
       'creatorId': user.uid,
       'creatorName': creatorName,
       'creatorEmail': user.email,
@@ -122,6 +123,66 @@ class GroupService {
 
     if (kDebugMode) {
       print("Successfully joined hub: $hubId");
+    }
+  }
+
+  // 4. Delete a Hub (moderator only)
+  Future<void> deleteHub(String hubId) async {
+    final user = getCurrentUser();
+    if (user == null) {
+      throw Exception("User not logged in.");
+    }
+
+    // Get the hub document
+    final hubDoc = await _firestore.collection(groupsCollection).doc(hubId).get();
+
+    if (!hubDoc.exists) {
+      throw Exception("Hub not found.");
+    }
+
+    final hubData = hubDoc.data() as Map<String, dynamic>;
+
+    // Check if the current user is the creator (moderator)
+    if (hubData['creatorId'] != user.uid) {
+      throw Exception("Only the hub creator can delete this hub.");
+    }
+
+    try {
+      // Delete all channels and their messages first
+      final channelsQuery = await _firestore
+          .collection('channels')
+          .where('hubId', isEqualTo: hubId)
+          .get();
+
+      for (var channelDoc in channelsQuery.docs) {
+        final channelId = channelDoc.id;
+
+        // Delete all messages in the channel
+        final messagesQuery = await _firestore
+            .collection('channels')
+            .doc(channelId)
+            .collection('messages')
+            .get();
+
+        for (var messageDoc in messagesQuery.docs) {
+          await messageDoc.reference.delete();
+        }
+
+        // Delete the channel
+        await channelDoc.reference.delete();
+      }
+
+      // Delete the hub document
+      await _firestore.collection(groupsCollection).doc(hubId).delete();
+
+      if (kDebugMode) {
+        print("Successfully deleted hub: $hubId");
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error deleting hub: $e");
+      }
+      throw Exception("Failed to delete hub: $e");
     }
   }
 }

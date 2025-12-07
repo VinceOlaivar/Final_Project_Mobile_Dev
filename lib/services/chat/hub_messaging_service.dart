@@ -10,7 +10,14 @@ class HubMessagingService {
   User? getCurrentUser() => _auth.currentUser;
 
   // Create a new channel in a hub
-  Future<String> createChannel(String hubId, String channelName, String channelType) async {
+  Future<String> createChannel(
+    String hubId,
+    String channelName,
+    String channelType, {
+    String? assignmentTitle,
+    String? assignmentDescription,
+    DateTime? dueDate,
+  }) async {
     final user = getCurrentUser();
     if (user == null) throw Exception("User not logged in");
 
@@ -19,12 +26,19 @@ class HubMessagingService {
     final channelData = {
       'id': channelId,
       'name': channelName,
-      'type': channelType, // 'text', 'voice', etc.
+      'type': channelType, // 'text', 'assignment', etc.
       'hubId': hubId,
       'createdBy': user.uid,
       'createdAt': Timestamp.now(),
       'lastActivity': Timestamp.now(),
     };
+
+    // Add assignment-specific fields if it's an assignment channel
+    if (channelType == 'assignment') {
+      if (assignmentTitle != null) channelData['assignmentTitle'] = assignmentTitle;
+      if (assignmentDescription != null) channelData['assignmentDescription'] = assignmentDescription;
+      if (dueDate != null) channelData['dueDate'] = Timestamp.fromDate(dueDate);
+    }
 
     await _firestore.collection('channels').doc(channelId).set(channelData);
     return channelId;
@@ -36,6 +50,11 @@ class HubMessagingService {
         .collection('channels')
         .where('hubId', isEqualTo: hubId)
         .snapshots();
+  }
+
+  // Get a single channel by ID
+  Future<DocumentSnapshot> getChannelById(String channelId) {
+    return _firestore.collection('channels').doc(channelId).get();
   }
 
   // Send message to a channel

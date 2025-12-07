@@ -18,11 +18,14 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   // Services
   final AuthService _authService = AuthService();
-  final GroupService _groupService = GroupService(); 
+  final GroupService _groupService = GroupService();
 
   // Controllers for the Hub creation dialog
   final TextEditingController _hubNameController = TextEditingController();
   final TextEditingController _joinHubNameController = TextEditingController();
+
+  // Hub type selection
+  String _selectedHubType = 'Classes'; // Default to Classes
 
   @override
   void dispose() {
@@ -44,7 +47,19 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text("Create New Hub"),
+          title: Row(
+            children: [
+              const Text("Create New Hub"),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  _hubNameController.clear();
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -59,24 +74,46 @@ class _HomePageState extends State<HomePage> {
                     focusNode: null,
                   ),
                 ),
+                const SizedBox(height: 16),
+                // Hub Type Dropdown
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 0),
+                  child: DropdownButtonFormField<String>(
+                    initialValue: _selectedHubType,
+                    decoration: const InputDecoration(
+                      labelText: 'Hub Type',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'Classes',
+                        child: Text('📚 Classes'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Organizations',
+                        child: Text('🏢 Organizations'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'For Fun',
+                        child: Text('🎉 For Fun'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedHubType = value!;
+                      });
+                    },
+                  ),
+                ),
               ],
             ),
           ),
           actions: [
-            // Cancel Button
-            TextButton(
-              onPressed: () {
-                _hubNameController.clear();
-                Navigator.of(context).pop();
-              },
-              child: Text("Cancel", style: TextStyle(color: Theme.of(context).colorScheme.tertiary)),
-            ),
-
             // Create Button
             MyButton(
               text: "Create",
               onTap: () {
-                _createHub(_hubNameController.text);
+                _createHub(_hubNameController.text, _selectedHubType);
                 Navigator.of(context).pop();
               },
             ),
@@ -95,7 +132,19 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text("Join Hub"),
+          title: Row(
+            children: [
+              const Text("Join Hub"),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  _joinHubNameController.clear();
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -114,15 +163,6 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           actions: [
-            // Cancel Button
-            TextButton(
-              onPressed: () {
-                _joinHubNameController.clear();
-                Navigator.of(context).pop();
-              },
-              child: Text("Cancel", style: TextStyle(color: Theme.of(context).colorScheme.tertiary)),
-            ),
-
             // Join Button
             MyButton(
               text: "Join",
@@ -138,7 +178,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   // Function to call the GroupService to create the hub
-  void _createHub(String name) async {
+  void _createHub(String name, String groupType) async {
     if (name.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Hub name cannot be empty.")),
@@ -149,6 +189,7 @@ class _HomePageState extends State<HomePage> {
     try {
       String hubId = await _groupService.createNewHub(
         name: name.trim(),
+        groupType: groupType,
       );
 
       _hubNameController.clear();

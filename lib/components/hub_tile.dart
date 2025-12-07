@@ -37,12 +37,16 @@ class HubTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isClass ? primaryColor : colorScheme.outline.withOpacity(0.3),
+          width: isClass ? 2.5 : 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.shadow.withOpacity(0.08),
-            spreadRadius: 1,
-            blurRadius: 10,
-            offset: const Offset(0, 5), 
+            color: isClass ? primaryColor.withOpacity(0.25) : colorScheme.shadow.withOpacity(0.08),
+            spreadRadius: isClass ? 3 : 1,
+            blurRadius: 12,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -129,7 +133,7 @@ class HubTile extends StatelessWidget {
                         hubName, // Use the resolved name
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
-                          fontSize: 15, 
+                          fontSize: 15,
                           color: colorScheme.onSurface,
                         ),
                         maxLines: 2,
@@ -144,8 +148,8 @@ class HubTile extends StatelessWidget {
                             child: Text(
                               creator, // Use the resolved creator name/email
                               style: TextStyle(
-                                fontSize: 11, 
-                                color: colorScheme.tertiary,
+                                fontSize: 11,
+                                color: colorScheme.onSurfaceVariant,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -162,9 +166,9 @@ class HubTile extends StatelessWidget {
                             Text(
                               'Moderator',
                               style: TextStyle(
-                                fontSize: 11, 
+                                fontSize: 11,
                                 fontWeight: FontWeight.bold,
-                                color: primaryColor,
+                                color: Colors.deepOrange.shade600,
                               ),
                             ),
                           ],
