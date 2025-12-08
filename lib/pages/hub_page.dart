@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:final_project/services/chat/hub_messaging_service.dart';
 import 'package:final_project/services/group/group_service.dart';
-import 'package:final_project/services/assignment_service.dart';
+import 'package:final_project/services/task_service.dart';
 import 'package:final_project/components/chat_bubble.dart';
 import 'package:final_project/components/assignment_submission_dialog.dart';
 import 'package:final_project/models/message.dart';
@@ -30,8 +30,10 @@ class HubPage extends StatefulWidget {
 
 class _HubPageState extends State<HubPage> {
   final HubMessagingService _hubMessagingService = HubMessagingService();
+  final TaskService _taskService = TaskService();
   final TextEditingController _messageController = TextEditingController();
   String? _selectedChannelId;
+  String _selectedChannelType = 'text'; // 'text' or 'task' for activities
 
   // Import GroupService for hub management
   final GroupService _groupService = GroupService();
@@ -79,10 +81,10 @@ class _HubPageState extends State<HubPage> {
                   indicatorColor: Theme.of(context).colorScheme.onSurfaceVariant,
                   labelColor: Theme.of(context).colorScheme.onSurfaceVariant,
                   unselectedLabelColor: Theme.of(context).colorScheme.onPrimary.withOpacity(0.7),
-                  tabs: const [
-                    Tab(icon: Icon(Icons.forum), text: 'Channels'),
-                    Tab(icon: Icon(Icons.chat), text: 'Chat'),
-                    Tab(icon: Icon(Icons.people), text: 'Members'),
+                  tabs: [
+                    const Tab(icon: Icon(Icons.forum), text: 'Channels'),
+                    Tab(icon: Icon(_selectedChannelType == 'task' ? Icons.task : Icons.chat), text: _selectedChannelType == 'task' ? 'Task' : 'Chat'),
+                    const Tab(icon: Icon(Icons.people), text: 'Members'),
                   ],
                 ),
               ),
@@ -170,6 +172,12 @@ class _HubPageState extends State<HubPage> {
 
   // Extracted widget builders for reusability
   Widget _buildChannelsView() {
+    // Default channels
+    final defaultChannels = [
+      {'id': '${widget.recieverID}_general', 'name': 'general', 'type': 'text'},
+      {'id': '${widget.recieverID}_activities', 'name': 'activities', 'type': 'text'},
+    ];
+
     return Column(
       children: [
         // Channels Header
@@ -183,89 +191,49 @@ class _HubPageState extends State<HubPage> {
               ),
             ),
           ),
-          child: Row(
-            children: [
-              Text(
-                'Channels',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-              const Spacer(),
-              if (widget.isModerator)
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: () => _showCreateChannelDialog(),
-                ),
-            ],
+          child: Text(
+            'Channels',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
           ),
         ),
         // Channels List
         Expanded(
-          child: StreamBuilder<QuerySnapshot>(
-            stream: _hubMessagingService.getChannelsStream(widget.recieverID),
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                return Center(child: Text('Error: ${snapshot.error}'));
-              }
-              if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
+          child: ListView.builder(
+            itemCount: defaultChannels.length,
+            itemBuilder: (context, index) {
+              final channel = defaultChannels[index];
+              final channelId = channel['id'] as String;
+              final channelName = channel['name'] as String;
+              final channelType = channel['type'] as String;
+              final isSelected = _selectedChannelId == channelId;
 
-              final channels = snapshot.data!.docs;
-              if (channels.isEmpty) {
-                return Center(
-                  child: Text(
-                    'No channels yet',
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              return ListTile(
+                leading: Icon(
+                  channelName == 'activities' ? Icons.task : Icons.chat,
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                title: Text(
+                  '# $channelName',
+                  style: TextStyle(
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.onSurface,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   ),
-                );
-              }
-
-              return ListView.builder(
-                itemCount: channels.length,
-                itemBuilder: (context, index) {
-                  final channel = channels[index].data() as Map<String, dynamic>;
-                  final channelId = channel['id'] as String;
-                  final channelName = channel['name'] as String;
-                  final channelType = channel['type'] as String? ?? 'text';
-                  final isSelected = _selectedChannelId == channelId;
-
-                  return ListTile(
-                    leading: Icon(
-                      channelType == 'assignment' ? Icons.assignment : Icons.chat,
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    title: Text(
-                      channelType == 'assignment' ? '📝 $channelName' : '# $channelName',
-                      style: TextStyle(
-                        color: isSelected
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.onSurface,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      ),
-                    ),
-                    subtitle: channelType == 'assignment' && channel['dueDate'] != null
-                        ? Text(
-                            'Due: ${(channel['dueDate'] as Timestamp).toDate().toString().split(' ')[0]}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                          )
-                        : null,
-                    onTap: () {
-                      setState(() {
-                        _selectedChannelId = channelId;
-                      });
-                    },
-                    selected: isSelected,
-                  );
+                ),
+                onTap: () {
+                  setState(() {
+                    _selectedChannelId = channelId;
+                    _selectedChannelType = channelName == 'activities' ? 'task' : 'text';
+                  });
                 },
+                selected: isSelected,
               );
             },
           ),
@@ -282,6 +250,17 @@ class _HubPageState extends State<HubPage> {
           style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
       );
+    }
+
+    // Check if this is a default channel
+    final defaultChannels = [
+      '${widget.recieverID}_general',
+      '${widget.recieverID}_activities',
+    ];
+
+    if (defaultChannels.contains(_selectedChannelId)) {
+      // Default channels are text channels
+      return _buildTextChatView();
     }
 
     // Check if this is an assignment channel
@@ -474,7 +453,7 @@ class _HubPageState extends State<HubPage> {
 
   Widget _buildStudentAssignmentView(Map<String, dynamic> channelData) {
     return FutureBuilder<Submission?>(
-      future: AssignmentService().getUserSubmission(_selectedChannelId!),
+      future: _taskService.getUserSubmission(_selectedChannelId!),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -591,7 +570,7 @@ class _HubPageState extends State<HubPage> {
         // Submissions List
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
-            stream: AssignmentService().getSubmissionsStream(_selectedChannelId!),
+            stream: _taskService.getSubmissionsStream(_selectedChannelId!),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 return Center(child: Text('Error: ${snapshot.error}'));
@@ -747,150 +726,7 @@ class _HubPageState extends State<HubPage> {
     return channelId.split('_').sublist(1).join('_').replaceAll('_', ' ');
   }
 
-  void _showCreateChannelDialog() {
-    final TextEditingController channelNameController = TextEditingController();
-    final TextEditingController assignmentTitleController = TextEditingController();
-    final TextEditingController assignmentDescriptionController = TextEditingController();
-    String selectedChannelType = 'text';
-    DateTime? selectedDueDate;
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Create Channel'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Channel Name
-                    TextField(
-                      controller: channelNameController,
-                      decoration: const InputDecoration(hintText: 'Channel name'),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Channel Type Dropdown
-                    DropdownButtonFormField<String>(
-                      initialValue: selectedChannelType,
-                      decoration: const InputDecoration(
-                        labelText: 'Channel Type',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: 'text', child: Text('Text Channel')),
-                        DropdownMenuItem(value: 'assignment', child: Text('Assignment Channel')),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          selectedChannelType = value!;
-                        });
-                      },
-                    ),
-
-                    // Assignment-specific fields
-                    if (selectedChannelType == 'assignment') ...[
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: assignmentTitleController,
-                        decoration: const InputDecoration(
-                          hintText: 'Assignment title',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: assignmentDescriptionController,
-                        decoration: const InputDecoration(
-                          hintText: 'Assignment description',
-                          border: OutlineInputBorder(),
-                        ),
-                        maxLines: 3,
-                      ),
-                      const SizedBox(height: 16),
-                      // Due Date Picker
-                      InkWell(
-                        onTap: () async {
-                          final pickedDate = await showDatePicker(
-                            context: context,
-                            initialDate: DateTime.now().add(const Duration(days: 7)),
-                            firstDate: DateTime.now(),
-                            lastDate: DateTime.now().add(const Duration(days: 365)),
-                          );
-                          if (pickedDate != null) {
-                            setState(() {
-                              selectedDueDate = pickedDate;
-                            });
-                          }
-                        },
-                        child: InputDecorator(
-                          decoration: const InputDecoration(
-                            labelText: 'Due Date (Optional)',
-                            border: OutlineInputBorder(),
-                          ),
-                          child: Text(
-                            selectedDueDate != null
-                                ? selectedDueDate!.toLocal().toString().split(' ')[0]
-                                : 'Select due date',
-                            style: TextStyle(
-                              color: selectedDueDate != null
-                                  ? Theme.of(context).colorScheme.onSurface
-                                  : Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              actions: [
-                OutlinedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: Theme.of(context).colorScheme.outline),
-                    foregroundColor: Theme.of(context).colorScheme.onSurface,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  ),
-                  child: const Text('Cancel'),
-                ),
-
-                const SizedBox(width: 8),
-
-                TextButton(
-                  onPressed: () async {
-                    if (channelNameController.text.isNotEmpty) {
-                      try {
-                        await _hubMessagingService.createChannel(
-                          widget.recieverID,
-                          channelNameController.text,
-                          selectedChannelType,
-                          assignmentTitle: selectedChannelType == 'assignment' ? assignmentTitleController.text : null,
-                          assignmentDescription: selectedChannelType == 'assignment' ? assignmentDescriptionController.text : null,
-                          dueDate: selectedChannelType == 'assignment' ? selectedDueDate : null,
-                        );
-                        Navigator.of(context).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('${selectedChannelType == 'assignment' ? 'Assignment' : 'Channel'} created successfully')),
-                        );
-                      } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error creating channel: $e')),
-                        );
-                      }
-                    }
-                  },
-                  child: const Text('Create'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
 
   void _showHubSettingsDialog() {
     showDialog(
@@ -1140,7 +976,7 @@ class _HubPageState extends State<HubPage> {
               final grade = int.tryParse(gradeController.text);
               if (grade != null && grade >= 0 && grade <= 100) {
                 try {
-                  await AssignmentService().gradeSubmission(
+                  await _taskService.gradeSubmission(
                     submissionId: submission.id,
                     grade: grade,
                   );

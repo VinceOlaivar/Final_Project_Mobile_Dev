@@ -105,7 +105,7 @@ class AssignmentService {
 
     final submission = Submission(
       id: submissionId,
-      assignmentId: assignmentId,
+      taskId: assignmentId,
       channelId: channelId,
       hubId: hubId,
       studentId: user.uid,
@@ -130,7 +130,7 @@ class AssignmentService {
   Stream<QuerySnapshot> getSubmissionsStream(String assignmentId) {
     return _firestore
         .collection('submissions')
-        .where('assignmentId', isEqualTo: assignmentId)
+        .where('taskId', isEqualTo: assignmentId)
         .snapshots();
   }
 
@@ -182,7 +182,7 @@ class AssignmentService {
     // Delete all submissions
     final submissions = await _firestore
         .collection('submissions')
-        .where('assignmentId', isEqualTo: assignmentId)
+        .where('taskId', isEqualTo: assignmentId)
         .get();
 
     for (var submission in submissions.docs) {

@@ -4,7 +4,7 @@ enum SubmissionStatus { notSubmitted, submitted, graded }
 
 class Submission {
   final String id;
-  final String assignmentId;
+  final String taskId;
   final String channelId;
   final String hubId;
   final String studentId;
@@ -21,7 +21,7 @@ class Submission {
 
   Submission({
     required this.id,
-    required this.assignmentId,
+    required this.taskId,
     required this.channelId,
     required this.hubId,
     required this.studentId,
@@ -41,7 +41,7 @@ class Submission {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'assignmentId': assignmentId,
+      'taskId': taskId,
       'channelId': channelId,
       'hubId': hubId,
       'studentId': studentId,
@@ -62,7 +62,7 @@ class Submission {
   factory Submission.fromMap(Map<String, dynamic> map) {
     return Submission(
       id: map['id'],
-      assignmentId: map['assignmentId'],
+      taskId: map['taskId'],
       channelId: map['channelId'],
       hubId: map['hubId'],
       studentId: map['studentId'],

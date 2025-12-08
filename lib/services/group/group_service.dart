@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:math';
+import 'package:final_project/services/chat/hub_messaging_service.dart';
 
 class GroupService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -49,6 +50,12 @@ class GroupService {
 
     try {
       await _firestore.collection(groupsCollection).doc(hubId).set(newHub);
+
+      // Create default channels
+      final hubMessagingService = HubMessagingService();
+      await hubMessagingService.createChannel(hubId, 'general', 'text');
+      await hubMessagingService.createChannel(hubId, 'activities', 'assignment');
+
       if (kDebugMode) {
         print("Successfully created new hub: $name with ID: $hubId");
       }
